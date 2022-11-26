@@ -1,0 +1,90 @@
+1. hadoop version
+2. javac -version
+3. export HADOOP_CLASSPATH=$(hadoop classpath)
+4. echo $HADOOP_CLASSPATH
+5. hadoop fs -mkdir /WordCountTutorial
+6. hadoop fs -mkdir /WordCountTutorial/Input
+7. cd hadoop-3.2.4
+8. cd sbin
+9. start-all.sh
+10. jps
+11. cd .. (2 times)
+12. cd Desktop
+13. cd WordCountTutorial/
+14. javac -classpath ${HADOOP_CLASSPATH} -d '/home/hdoop/Desktop/WordCountTutorial/tutorial_classes' '/home/hdoop/Desktop/WordCountTutorial/WordCount.java' 
+15. jar -cvf firstTutorial.jar -C tutorial_classes/ .
+16. hadoop jar '/home/hdoop/Desktop/WordCountTutorial/firstTutorial.jar' WordCount /WordCountTutorial/Input /WordCountTutorial/Output
+17. hadoop dfs -cat /WordCountTutorial/Output/*
+18. cd input_data/
+19. hadoop fs -put 'input.txt' /WordCountTutorial/Input
+20. hadoop jar '/home/hdoop/Desktop/WordCountTutorial/firstTutorial.jar' WordCount /WordCountTutorial/Input /WordCountTutorial/Output
+21. hadoop dfs -cat /WordCountTutorial/Output/*
+22. cd ..
+23. hadoop dfs -cat /WordCountTutorial/Output/*
+24. hadoop jar '/home/hdoop/Desktop/WordCountTutorial/firstTutorial.jar' WordCount /WordCountTutorial/Input /WordCountTutorial/Output1
+25. hadoop dfs -cat /WordCountTutorial/Output1/*
+
+Java Code 
+
+
+import java.io.IOException;
+import java.util.StringTokenizer;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+
+public class WordCount {
+
+  public static class TokenizerMapper
+       extends Mapper<Object, Text, Text, IntWritable>{
+
+    private final static IntWritable one = new IntWritable(1);
+    private Text word = new Text();
+
+    public void map(Object key, Text value, Context context
+                    ) throws IOException, InterruptedException {
+      StringTokenizer itr = new StringTokenizer(value.toString());
+      while (itr.hasMoreTokens()) {
+        word.set(itr.nextToken());
+        context.write(word, one);
+      }
+    }
+  }
+
+  public static class IntSumReducer
+       extends Reducer<Text,IntWritable,Text,IntWritable> {
+    private IntWritable result = new IntWritable();
+
+    public void reduce(Text key, Iterable<IntWritable> values,
+                       Context context
+                       ) throws IOException, InterruptedException {
+      int sum = 0;
+      for (IntWritable val : values) {
+        sum += val.get();
+      }
+      result.set(sum);
+      context.write(key, result);
+    }
+  }
+
+  public static void main(String[] args) throws Exception {
+    Configuration conf = new Configuration();
+    Job job = Job.getInstance(conf, "word count");
+    job.setJarByClass(WordCount.class);
+    job.setMapperClass(TokenizerMapper.class);
+    job.setCombinerClass(IntSumReducer.class);
+    job.setReducerClass(IntSumReducer.class);
+    job.setOutputKeyClass(Text.class);
+    job.setOutputValueClass(IntWritable.class);
+    FileInputFormat.addInputPath(job, new Path(args[0]));
+    FileOutputFormat.setOutputPath(job, new Path(args[1]));
+    System.exit(job.waitForCompletion(true) ? 0 : 1);
+  }
+}

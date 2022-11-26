@@ -1,0 +1,8 @@
+﻿Start-all.sh
+jps
+hadoop fs -mkdir /sample
+hadoop fs -put '/home/hduser/Desktop/sample.txt' /sample
+hadoop fs -cat /sample/sample.txt
+hadoop fs -get /sample/sample.txt '/home/hduser/Desktop/WordCountTutorial'
+hadoop fs -rm -r /sample
+hadoop fs -cp /sample/sample.txt /sample2
